@@ -1,3 +1,2 @@
-import pika
 import requests
 
