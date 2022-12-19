@@ -8,7 +8,9 @@ from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import rabbit_MQ
 
+
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://root:wqWrIObDDeyFMCmLzjGndDuD@esme.iran.liara.ir:32504/postgres'
 data = SQLAlchemy(app)
 
 my_db = database.Db()
@@ -39,7 +41,6 @@ def save_to_s3(file_name):
     s3_client = boto3.client(service_name='s3', endpoint_url=endpoint_url, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     try:
         response = s3_client.upload_file(file_name, bucket_name, file_name)
-        print('response: '+response)
         url = endpoint_url + "/" + bucket_name + "/" + file_name
     except ClientError as e:
         logging.error(e)
@@ -48,7 +49,7 @@ def save_to_s3(file_name):
 
 
 @app.route('/', methods=['POST', 'GET'])
-def request():
+def req():
     if request.method == 'POST':
         advertisement = Ad(email= request.form["email"], description= request.form["description"], image_url= request.form["image"])
 

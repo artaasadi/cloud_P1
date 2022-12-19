@@ -1,6 +1,7 @@
 import requests
 import database
 import rabbit_MQ
+import pika
 
 AMQP_URL = "amqps://pxrjhmgr:FUMnQkHqsRKTdKc0f1Uq6H_-9zKMjjYU@possum.lmq.cloudamqp.com/pxrjhmgr"
 
@@ -56,6 +57,41 @@ def callback(ch, method, properties, body):
             send_message(email, 'advertising request', message)
 
 
+def main_receive():
+    connection = pika.BlockingConnection(pika.URLParameters(AMQP_URL))
+    channel = connection.channel()
+
+    channel.queue_declare(queue='advertisements')
+
+    def callback(ch, method, properties, body):
+        print(" [x] Received %r" % body)
+        id = body.decode("utf-8")
+        ad_email = database.select_data(id)[0][1]
+        ad_image_url = database.select_data(id)[0][3]
+        result = image_tagging(ad_image_url)
+
+        if result is not False:
+            print("yes")
+            database.update_data_category(id, result)
+            database.update_data_state(id, 'accepted')
+            ad_category = database.select_data(id)[0][4]
+            send_message(ad_email, 'advertising request',
+                                'advertisement accepted with the category of %s' % ad_category)
+        else:
+            print("no")
+            database.update_data_state(id, 'rejected')
+            send_message(ad_email, 'advertising request', 'advertisement rejected')
+        # cur = database.conn.cursor()
+        # cur.execute('SELECT * FROM test;')
+        # adds = cur.fetchall()
+        # print(adds)
+
+    channel.basic_consume(queue='advertisements', on_message_callback=callback, auto_ack=True)
+
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
+
 
 if __name__ == '__main__':
-    rabbit_MQ.rabbitMQ_receive(callback=callback)
+    #rabbit_MQ.rabbitMQ_receive(callback=callback)
+    main_receive()
